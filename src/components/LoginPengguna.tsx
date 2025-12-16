@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// Catatan: Menggunakan 'Link' dari react-router-dom untuk navigasi "Daftar di sini"
+import { supabase } from '../lib/supabaseClient';
 
 const LoginPengguna = () => {
+    console.log('LoginPengguna rendered');
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    
+    const [error, setError] = useState<string>('');
+
     const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -18,29 +20,50 @@ const LoginPengguna = () => {
             return;
         }
 
-        // --- Logika Autentikasi Dummy (Ganti dengan API Anda) ---
         try {
-            const isLoginSuccessful = true; // Anggap berhasil
-            
-            if (isLoginSuccessful) {
-                alert('Login Berhasil! Mengarahkan ke Beranda.');
-                navigate('/'); 
-            } else {
-                setError('Email atau password salah. Coba lagi.');
+            console.log('Attempt login:', email);
+
+            const { data, error: signInError } =
+                await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+            console.log('Login response:', data, signInError);
+
+            if (signInError) {
+                throw signInError;
             }
-            
-        } catch (err) {
-            setError('Terjadi masalah saat mencoba login.');
+
+            if (data.user) {
+                alert('Login Berhasil! Mengarahkan ke Beranda.');
+                navigate('/dashboard');
+;
+            } else {
+                setError('Login gagal. Periksa kembali email dan password Anda.');
+            }
+
+        } catch (err: any) {
+            console.error('Error saat login:', err);
+
+            const errorMessage = err?.message || '';
+
+            if (errorMessage.includes('Email not confirmed')) {
+                setError('Akun belum aktif. Silakan cek email Anda untuk verifikasi.');
+            } else if (errorMessage.includes('Invalid login credentials')) {
+                setError('Email atau password salah.');
+            } else {
+                setError('Terjadi kesalahan saat mencoba masuk.');
+            }
         }
     };
 
     return (
-        // Style untuk menempatkan form di tengah halaman
         <div style={styles.container}>
             <div style={styles.card}>
                 <h2 style={styles.header}>Masuk ke Kolektif</h2>
                 {error && <p style={styles.errorText}>{error}</p>}
-                
+
                 <form onSubmit={handleSubmit}>
                     <div style={styles.inputGroup}>
                         <label htmlFor="email" style={styles.label}>Email:</label>
@@ -51,10 +74,9 @@ const LoginPengguna = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             style={styles.input}
-                            placeholder="Masukkan email Anda"
                         />
                     </div>
-                    
+
                     <div style={styles.inputGroup}>
                         <label htmlFor="password" style={styles.label}>Password:</label>
                         <input
@@ -64,20 +86,16 @@ const LoginPengguna = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             style={styles.input}
-                            placeholder="Masukkan password Anda"
                         />
                     </div>
-                    
-                    <button 
-                        type="submit" 
-                        style={styles.submitButton}
-                    >
+
+                    <button type="submit" style={styles.submitButton}>
                         Masuk
                     </button>
                 </form>
 
                 <p style={styles.registerLinkContainer}>
-                    Belum punya akun? 
+                    Belum punya akun?
                     <Link to="/registrasi" style={styles.link}>
                         Daftar di sini
                     </Link>
@@ -87,20 +105,20 @@ const LoginPengguna = () => {
     );
 };
 
-// Objek untuk menyimpan semua style
+export default LoginPengguna;
 const styles = {
     container: {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: '#f8f9fa', // Latar belakang abu-abu muda
+        backgroundColor: '#f8f9fa',
     },
     card: {
         backgroundColor: '#ffffff',
         padding: '40px',
         borderRadius: '12px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)', // Box shadow elegan
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
         width: '100%',
         maxWidth: '380px',
         textAlign: 'left',
@@ -129,12 +147,11 @@ const styles = {
         borderRadius: '8px',
         boxSizing: 'border-box',
         fontSize: '16px',
-        transition: 'border-color 0.3s',
     },
     submitButton: {
         width: '100%',
         padding: '12px',
-        backgroundColor: '#007bff', // Warna biru primer yang terang
+        backgroundColor: '#007bff',
         color: 'white',
         border: 'none',
         borderRadius: '8px',
@@ -142,7 +159,6 @@ const styles = {
         fontSize: '16px',
         fontWeight: 'bold',
         marginTop: '10px',
-        transition: 'background-color 0.3s',
     },
     registerLinkContainer: {
         marginTop: '25px',
@@ -163,4 +179,3 @@ const styles = {
     }
 };
 
-export default LoginPengguna;

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
+import { supabase } from '../lib/supabaseClient'; // Impor supabase client
+
 const RegistrasiPengguna = () => {
     // State untuk menyimpan nilai input
     const [nama, setNama] = useState('');
@@ -17,48 +19,75 @@ const RegistrasiPengguna = () => {
         e.preventDefault();
         setError(''); // Reset pesan error
 
-        // 1. Validasi Dasar
-        if (!nama || !email || !password || !konfirmasiPassword) {
-            setError('Semua kolom harus diisi.');
-            return;
-        }
+       const emailInput = email.trim();
+const cleanNama = nama.trim();
 
-        // 2. Validasi Konfirmasi Password
-        if (password !== konfirmasiPassword) {
-            setError('Konfirmasi Password tidak cocok dengan Password.');
-            return;
-        }
-        
-        // 3. Validasi Panjang Password (Contoh)
-        if (password.length < 6) {
-            setError('Password minimal harus 6 karakter.');
-            return;
-        }
+if (!cleanNama || !emailInput || !password || !konfirmasiPassword) {
+    setError('Semua kolom harus diisi.');
+    return;
+}
 
-        // --- Logika Pendaftaran Dummy ---
-        console.log('Mencoba mendaftar dengan:', nama, email);
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+if (!emailRegex.test(emailInput)) {
+    setError('Format email tidak valid.');
+    return;
+}
 
+if (password !== konfirmasiPassword) {
+    setError('Konfirmasi Password tidak cocok dengan Password.');
+    return;
+}
+
+if (password.length < 6) {
+    setError('Password minimal harus 6 karakter.');
+    return;
+}
+
+
+        // --- Logika Pendaftaran dengan Supabase ---
         try {
-            // TODO: Ganti dengan pemanggilan API pendaftaran Anda
-            // const response = await api.post('/api/register', { nama, email, password });
-            
-            // --- Simulasi Pendaftaran Berhasil ---
-            const isRegistrationSuccessful = true; 
+            const { data, error: signUpError } = await supabase.auth.signUp({
+    email: emailInput,
+    password: password,
+    options: {
+        data: {
+            full_name: cleanNama,
+        }
+    }
+});
 
-            if (isRegistrationSuccessful) {
+
+            if (signUpError) {
+                throw signUpError;
+            }
+
+            if (data.user) {
                 alert('Pendaftaran Berhasil! Silakan masuk.');
-                // Arahkan pengguna ke halaman login setelah pendaftaran berhasil
                 navigate('/login'); 
             } else {
-                // Contoh jika API mengembalikan error (misalnya: email sudah terdaftar)
-                setError('Pendaftaran gagal. Mungkin email sudah terdaftar.');
+                setError('Pendaftaran gagal. Silakan coba lagi.');
             }
             
         } catch (err) {
-            // Tangani error jaringan atau server
-            console.error('Error saat pendaftaran:', err);
-            setError('Terjadi masalah saat mencoba mendaftar. Silakan coba beberapa saat lagi.');
+        console.error('Error saat pendaftaran:', err);
+
+        const message =
+        typeof err === 'object' && err !== null && 'message' in err
+            ? err.message
+            : '';
+
+        if (
+        message.includes('already registered') ||
+        message.includes('already exists')
+        ) {
+        setError(
+            'Email ini sudah terdaftar. Silakan gunakan email lain atau masuk.'
+        );
+        } else {
+        setError('Terjadi masalah saat mencoba mendaftar.');
         }
+}
+
     };
 
     return (
