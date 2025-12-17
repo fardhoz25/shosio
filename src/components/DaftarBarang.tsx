@@ -80,6 +80,8 @@ useEffect(() => {
 
     
 
+    
+
    const { data, error } = await supabase
   .from("donations")
   .select("id, title, description, status")
@@ -106,6 +108,7 @@ useEffect(() => {
   }
 
   loadData();
+  
 
   const channel = supabase
     .channel("public:donations")
@@ -117,6 +120,8 @@ useEffect(() => {
       }
     )
     .subscribe();
+
+    
 
   return () => {
     supabase.removeChannel(channel);
@@ -143,6 +148,8 @@ useEffect(() => {
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-8">
           <h1 className="text-slate-900 mb-2">Daftar Barang</h1>
+
+          
           <p className="text-slate-600 text-lg">
             Temukan barang yang kamu butuhkan dari mahasiswa lain
           </p>
@@ -248,11 +255,13 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <Link to={`/detail-barang/${item.id}`}>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                    Lihat Detail
-                  </Button>
-                </Link>
+                <Link to={`/barang/${item.id}`}>
+  <Button className="w-full bg-blue-600 hover:bg-blue-700">
+    Lihat Detail
+  </Button>
+</Link>
+
+
               </div>
             );
           })}

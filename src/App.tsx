@@ -36,7 +36,8 @@ function AppContent() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/daftar-barang" element={<DaftarBarang />} />
-      <Route path="/detail-barang/:id" element={<DetailBarang />} />
+      <Route path="/barang/:id" element={<DetailBarang />} />
+
       <Route path="/login" element={<LoginPengguna />} />
       <Route path="/registrasi" element={<RegistrasiPengguna />} />
       <Route path="/sop" element={<SOP />} />

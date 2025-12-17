@@ -3,33 +3,32 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/useAuth"; // 1. Import useAuth
-import { Book, Package, Laptop, ArrowLeft, Award } from "lucide-react";
+import { useAuth } from "../contexts/useAuth";
+import { ArrowLeft } from "lucide-react";
 
 type Barang = {
-  id: number;
-  nama: string;
-  kategori: string;
+  id: string;
+  title: string;
+  description: string | null;
   status: string;
-  donatur: string;
-  reputasi: number;
-  deskripsi?: string | null;
-  owner_id: string; // Tambahkan owner_id untuk validasi
+  taken_by: string | null;
 };
 
-function getIconForKategori(kategori: string) {
-  if (kategori === "Buku") return Book;
-  if (kategori === "Elektronik") return Laptop;
-  if (kategori === "Perlengkapan" || kategori === "Alat") return Package;
-  return Package;
+// 🔹 Helper untuk memisahkan teks & gambar base64
+function parseDescription(desc: string) {
+  const imageMatch = desc.match(/\[IMAGE\](.*?)\[\/IMAGE\]/);
+  const image = imageMatch ? imageMatch[1] : null;
+
+  const text = desc.replace(/\[IMAGE\].*?\[\/IMAGE\]/, "").trim();
+
+  return { text, image };
 }
 
 export default function DetailBarang() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth(); // 2. Ambil user dari context
+  const { user } = useAuth();
 
   const [barang, setBarang] = useState<Barang | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,15 +44,13 @@ export default function DetailBarang() {
     setLoading(true);
 
     const { data, error } = await supabase
-      .from("posts")
-      .select(
-        "id, nama, kategori, status, donatur, reputasi, deskripsi, owner_id"
-      )
-      .eq("id", Number(id))
+      .from("donations")
+      .select("id, title, description, status, taken_by")
+      .eq("id", id)
       .single();
 
     if (error) {
-      console.error(error);
+      console.error("Supabase error:", error);
       setBarang(null);
     } else {
       setBarang(data as Barang);
@@ -62,52 +59,34 @@ export default function DetailBarang() {
     setLoading(false);
   }
 
-  async function handleAjukan() {
-    // 3. Validasi Barang
+  async function handleAmbilDonasi() {
     if (!barang) return;
 
-    // 4. Validasi Login
     if (!user) {
-      alert("Silakan login terlebih dahulu untuk mengajukan permintaan.");
+      alert("Silakan login untuk mengambil donasi.");
       navigate("/login");
-      return;
-    }
-
-    // 5. Validasi Self-Request (Mencegah user minta barang sendiri)
-    if (user.id === barang.owner_id) {
-      alert(
-        "Anda tidak dapat mengajukan permintaan untuk barang milik sendiri."
-      );
       return;
     }
 
     setRequesting(true);
 
     try {
-      const { error } = await supabase.from("transactions").insert({
-        post_id: barang.id,
-        pemilik_id: barang.owner_id, // Gunakan owner_id dari data barang
-        peminjam_id: user.id, // Gunakan ID user yang sedang login
-        tipe:
-          barang.status === "Tukar"
-            ? "Tukar"
-            : barang.status === "Donasi"
-            ? "Donasi"
-            : "Pinjam",
-        status: "Menunggu",
-        nama_barang: barang.nama,
-      });
+      const { error } = await supabase
+        .from("donations")
+        .update({
+          status: "taken",
+          taken_by: user.id,
+        })
+        .eq("id", barang.id);
 
       if (error) {
-        console.error("Transaction Error:", error);
-        alert(`Gagal mengajukan permintaan: ${error.message}`);
+        alert("Donasi sudah diambil oleh orang lain.");
       } else {
-        alert("Permintaan berhasil dikirim ✅");
-        // Arahkan ke halaman riwayat donasi atau konfirmasi
-        navigate("/riwayat-donasi");
+        alert("Anda berhasil mengambil donasi ✅");
+        loadBarang(); // refresh data
       }
     } catch (err) {
-      console.error("Unexpected Error:", err);
+      console.error("Unexpected error:", err);
       alert("Terjadi kesalahan sistem.");
     } finally {
       setRequesting(false);
@@ -131,10 +110,7 @@ export default function DetailBarang() {
             Barang tidak ditemukan atau sudah dihapus.
           </p>
           <Link to="/daftar-barang">
-            <Button variant="outline" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Kembali ke daftar barang
-            </Button>
+            <Button variant="outline">Kembali</Button>
           </Link>
         </div>
         <Footer />
@@ -142,9 +118,8 @@ export default function DetailBarang() {
     );
   }
 
-  const Icon = getIconForKategori(barang.kategori);
-  // Cek apakah barang ini milik user yang sedang login
-  const isOwner = user?.id === barang.owner_id;
+  const sudahDiambil = barang.status === "taken";
+  const diambilOlehUser = barang.taken_by === user?.id;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -159,79 +134,50 @@ export default function DetailBarang() {
         </Link>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-6">
-          <div className="flex gap-4">
-            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <Icon className="w-7 h-7 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-                {barang.nama}
-              </h1>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary" className="text-xs">
-                  {barang.kategori}
-                </Badge>
-                <Badge
-                  className={`text-xs ${
-                    barang.status === "Donasi"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-blue-100 text-blue-700"
-                  }`}
-                >
-                  {barang.status}
-                </Badge>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {barang.title}
+          </h1>
+
+          {barang.description && (() => {
+            const { text, image } = parseDescription(barang.description);
+
+            return (
+              <div className="space-y-3">
+                {text && (
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    {text}
+                  </p>
+                )}
+
+                {image && (
+                  <img
+                    src={image}
+                    alt="Gambar donasi"
+                    className="rounded-xl max-h-80 object-contain border"
+                  />
+                )}
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
-          <div className="border-t border-slate-100 pt-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm">
-                  {barang.donatur.charAt(0)}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Donatur</p>
-                <p className="text-slate-800 font-medium">{barang.donatur}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-500" />
-              <span className="text-slate-600 text-sm">Reputasi donatur:</span>
-              <Badge className="text-xs bg-green-100 text-green-700 border border-green-200">
-                {barang.reputasi}%
-              </Badge>
-            </div>
-          </div>
-
-          {barang.deskripsi && (
-            <div className="border-t border-slate-100 pt-4">
-              <h2 className="text-sm font-semibold text-slate-800 mb-1">
-                Deskripsi
-              </h2>
-              <p className="text-sm text-slate-700 leading-relaxed">
-                {barang.deskripsi}
-              </p>
-            </div>
-          )}
-
-          <div className="pt-2">
-            {isOwner ? (
-              <Button
-                disabled
-                className="w-full bg-slate-100 text-slate-400 border border-slate-200"
-              >
-                Ini adalah barang Anda sendiri
-              </Button>
+          <div className="pt-4">
+            {sudahDiambil ? (
+              diambilOlehUser ? (
+                <Button disabled className="w-full bg-green-100 text-green-700">
+                  Anda berhasil mengambil donasi
+                </Button>
+              ) : (
+                <Button disabled className="w-full bg-slate-200 text-slate-500">
+                  Donasi sudah diambil oleh orang lain
+                </Button>
+              )
             ) : (
               <Button
-                onClick={handleAjukan}
+                onClick={handleAmbilDonasi}
                 disabled={requesting}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-green-600 hover:bg-green-700"
               >
-                {requesting ? "Mengirim..." : "Ajukan permintaan / tukar"}
+                {requesting ? "Memproses..." : "Ambil Donasi"}
               </Button>
             )}
           </div>
