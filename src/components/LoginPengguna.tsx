@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+<<<<<<< HEAD
 import { supabase } from '../lib/supabaseClient';
+=======
+import { supabase } from '../lib/supabaseClient'; // Impor supabase client
+>>>>>>> f7ce4ff5f9c80c76f8ceb18f18247396dee86e80
 
 const LoginPengguna = () => {
     console.log('LoginPengguna rendered');
@@ -20,6 +24,7 @@ const LoginPengguna = () => {
             return;
         }
 
+<<<<<<< HEAD
         try {
             console.log('Attempt login:', email);
 
@@ -30,6 +35,14 @@ const LoginPengguna = () => {
                 });
 
             console.log('Login response:', data, signInError);
+=======
+        // --- Logika Autentikasi dengan Supabase ---
+        try {
+            const { data, error: signInError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+>>>>>>> f7ce4ff5f9c80c76f8ceb18f18247396dee86e80
 
             if (signInError) {
                 throw signInError;
@@ -37,6 +50,7 @@ const LoginPengguna = () => {
 
             if (data.user) {
                 alert('Login Berhasil! Mengarahkan ke Beranda.');
+<<<<<<< HEAD
                 navigate('/dashboard');
 ;
             } else {
@@ -55,6 +69,25 @@ const LoginPengguna = () => {
             } else {
                 setError('Terjadi kesalahan saat mencoba masuk.');
             }
+=======
+                navigate('/');
+            } else {
+                setError('Login gagal. Periksa kembali email dan password Anda.');
+            }
+            
+        } catch (err) {
+            console.error('Error saat login:', err);
+            
+            const errorMessage = err.message || "";
+            
+            if (errorMessage.includes("Email not confirmed")) {
+                setError('Akun belum aktif. Silakan cek email Anda untuk verifikasi.');
+            } else if (errorMessage.includes("Invalid login credentials")) {
+                setError('Email atau password salah.');
+            } else {
+                setError('Terjadi kesalahan saat mencoba masuk.');
+            }
+>>>>>>> f7ce4ff5f9c80c76f8ceb18f18247396dee86e80
         }
     };
 

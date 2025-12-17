@@ -19,6 +19,7 @@ const RegistrasiPengguna = () => {
         e.preventDefault();
         setError(''); // Reset pesan error
 
+<<<<<<< HEAD
        const emailInput = email.trim();
 const cleanNama = nama.trim();
 
@@ -57,6 +58,44 @@ if (password.length < 6) {
 });
 
 
+=======
+        const cleanEmail = email.replace(/[^a-zA-Z0-9@.\-_+]/g, '').toLowerCase();
+        const cleanNama = nama.trim();
+
+        if (!cleanNama || !cleanEmail || !password || !konfirmasiPassword) {
+            setError('Semua kolom harus diisi.');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(cleanEmail)) {
+            setError('Format email tidak valid.');
+            return;
+        }
+
+        if (password !== konfirmasiPassword) {
+            setError('Konfirmasi Password tidak cocok dengan Password.');
+            return;
+        }
+        
+        if (password.length < 6) {
+            setError('Password minimal harus 6 karakter.');
+            return;
+        }
+
+        // --- Logika Pendaftaran dengan Supabase ---
+        try {
+            const { data, error: signUpError } = await supabase.auth.signUp({
+                email: cleanEmail, 
+                password: password,
+                options: {
+                    data: {
+                        full_name: cleanNama,
+                    }
+                }
+            });
+
+>>>>>>> f7ce4ff5f9c80c76f8ceb18f18247396dee86e80
             if (signUpError) {
                 throw signUpError;
             }
@@ -69,6 +108,7 @@ if (password.length < 6) {
             }
             
         } catch (err) {
+<<<<<<< HEAD
         console.error('Error saat pendaftaran:', err);
 
         const message =
@@ -85,6 +125,15 @@ if (password.length < 6) {
         );
         } else {
         setError('Terjadi masalah saat mencoba mendaftar.');
+=======
+            // Tangani error spesifik dari Supabase
+            if (err.message.includes("User already registered")) {
+                setError('Email ini sudah terdaftar. Silakan gunakan email lain atau masuk.');
+            } else {
+                console.error('Error saat pendaftaran:', err);
+                setError('Terjadi masalah saat mencoba mendaftar.');
+            }
+>>>>>>> f7ce4ff5f9c80c76f8ceb18f18247396dee86e80
         }
 }
 
